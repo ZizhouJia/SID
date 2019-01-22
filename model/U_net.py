@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
+import math
 
 class U_net(nn.Module):
-    def __init__(self,image_depth=9,out_dim=9):
+    def __init__(self,input_depth=4,output_depth=12):
         super(U_net,self).__init__(self)
         self.activate=nn.LeakyReLU(0.2)
-        kernels_list=[image_depth,32,64,128,256,512]
+        kernels_list=[input_depth,32,64,128,256,512]
         self.down=[]
         for i in range(0,4):
             conv1=nn.Conv2d(kernels_list[i],kernels_list[i+1],3,1,1)
@@ -21,6 +22,9 @@ class U_net(nn.Module):
         self.conv_middle1=nn.Conv2d(kernels_list[4],kernels_list[5],3,1,1)
         self.conv_middle2=nn.Conv2d(kernels_list[5],kernels_list[5],3,1,1)
 
+        self.pow=math.sqrt(output_depth/3)
+        self.pow=int(self.pow)
+
         self.up=[]
         for i in range(0,4):
             deconv1=nn.ConvTranspose2d(kernels_list[5-i],kernels_list[4-i],3,2,padding=1)
@@ -33,7 +37,7 @@ class U_net(nn.Module):
             self.up.append(conv1)
             self.up.append(conv2)
 
-        self.conv_out=nn.Conv2d(kernels_list[1],kernels_list[0],3,1,1)
+        self.conv_out=nn.Conv2d(kernels_list[1],out_depth,3,1,1)
 
     def forward(self,x):
         conv_out=[]
@@ -59,4 +63,13 @@ class U_net(nn.Module):
             out=self.up[3*i+2](out)
             out=self.activate(out)
         out=self.conv_out(out)
+        out=out.permute(0,2,3,1)
+        H=out.size()[1]
+        W=out.size()[2]
+        out=out.view(-1,1,H*W,self.pow*self.pow*3)
+        out=out.view(-1,1,H*W*self.pow,self.pow*3)
+        out=out.view(-1,H*self.pow,W,self.pow*3)
+        out=out.view(-1,H*self.pow,1,W*self.pow*3)
+        out=out.view(-1,H*self.pow,W*self.pow,3)
+        out=out.permute(0,3,1,2)
         return out
