@@ -1,2 +1,3 @@
 [submodule "model-utils"]
+      path=model-utils
       url = https://github.com/ZizhouJia/model-utils
